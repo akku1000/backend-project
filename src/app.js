@@ -18,6 +18,12 @@ app.use(express.static("public"));    //use to store pdf file for all
 //server ->user browser andar ki cookies ko access or set kr pau 
 app.use(cookieParser());
 
+//routes import
 
-export default app
+import userRouter from './routes/user.routes.js'
+
+//routes declration
+app.use("/api/v1/users",userRouter);
+
+export { app}
 // export {app}
