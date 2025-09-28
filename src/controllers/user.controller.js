@@ -3,6 +3,7 @@ import { Apierror } from "../utils or utility/apierror.js";
 import {User} from "../models/user.model.js"
 import { uploadOnCloudinary } from "../utils or utility/cloudinary.js";
 import { ApiResponse } from "../utils or utility/apiresponse.js";
+import jwt from "jsonwebtoken";
 
 
 const generateAccessAndRefereshTokens=async(userId)=>{
@@ -108,7 +109,7 @@ const loginUser=asyncHandler(async(req,res)=>{
         throw new Apierror("400","Create Account");
     }
 
-    const ispassword=await user.isPasswordCorrect(password);
+    const ispassword=await user.isPasswordCorrect(password);``
 
     if(!ispassword){
         throw new Apierror(400,"Invalid Password");
@@ -157,6 +158,48 @@ const logoutUser=asyncHandler(async(req,res)=>{
 
 })
 
-export {registerUser,loginUser,logoutUser}
+const refreshAccessToken=asyncHandler(async(req,res)=>{
+    const incomingRefreshToken=req.cookies.refreshToken||req.body.refreshToken
+
+    if(!incomingRefreshToken){
+        throw new Apierror(401,"No refreshToken")
+    }
+    
+    try {
+        const decodedToken=jwt.verify(
+            incomingRefreshToken,
+            process.env.ACCESS_TOKEN_SECRET
+        )
+    
+        const user=await User.findById(decodedToken?._id)
+    
+        if(!user){
+            throw new Apierror(401,"Invalid refresToken")
+        }
+    
+        if(incomingRefreshToken!==user?.refreshToken){
+            throw new Apierror(401,"refresh token is expired or used")
+        }
+         
+        const {accessToken,NewrefreshToken}=await generateAccessAndRefereshTokens(user._id)
+    
+        const option={
+            httpOnly:true,
+            secure:true
+        }
+    
+        return res.status(200).
+        cookie("accessToken",accessToken,option).
+        cookie("refreshToken",NewrefreshToken,option).
+        json(
+            new ApiResponse(200),{accessToken,refreshToken:NewrefreshToken},
+            "Access Token refreshed"
+        )
+    } catch (error) {
+        throw new Apierror(401,error?.message||"Invalid refresh token")
+    }
+
+})
+export {registerUser,loginUser,logoutUser,refreshAccessToken}
 
 
